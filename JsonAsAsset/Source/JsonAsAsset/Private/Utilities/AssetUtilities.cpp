@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 #include "Utilities/AssetUtilities.h"
 
@@ -23,7 +23,8 @@
 #include "Utilities/RemoteUtilities.h"
 #include "PluginUtils.h"
 
-UPackage* FAssetUtilities::CreateAssetPackage(const FString& FullPath) {
+UPackage* FAssetUtilities::CreateAssetPackage(const FString& FullPath)
+{
 	UPackage* Package = CreatePackage(*FullPath);
 	UPackage* _ = Package->GetOutermost(); // ??
 	Package->FullyLoad();
@@ -31,17 +32,20 @@ UPackage* FAssetUtilities::CreateAssetPackage(const FString& FullPath) {
 	return Package;
 }
 
-UPackage* FAssetUtilities::CreateAssetPackage(const FString& Name, const FString& OutputPath) {
+UPackage* FAssetUtilities::CreateAssetPackage(const FString& Name, const FString& OutputPath)
+{
 	UPackage* Ignore = nullptr;
 	return CreateAssetPackage(Name, OutputPath, Ignore);
 }
 
-UPackage* FAssetUtilities::CreateAssetPackage(const FString& Name, const FString& OutputPath, UPackage*& OutOutermostPkg) {
+UPackage* FAssetUtilities::CreateAssetPackage(const FString& Name, const FString& OutputPath, UPackage*& OutOutermostPkg)
+{
 	const UJsonAsAssetSettings* Settings = GetDefault<UJsonAsAssetSettings>();
 	FString ModifiablePath;
 
 	// References Automatically Formatted
-	if ((!OutputPath.StartsWith("/Game/") && !OutputPath.StartsWith("/Plugins/")) && OutputPath.Contains("Content")) {
+	if ((!OutputPath.StartsWith("/Game/") && !OutputPath.StartsWith("/Plugins/")) && OutputPath.Contains("Content"))
+	{
 		OutputPath.Split(*(Settings->ExportDirectory.Path + "/"), nullptr, &ModifiablePath, ESearchCase::IgnoreCase, ESearchDir::FromStart);
 		ModifiablePath.Split("/", nullptr, &ModifiablePath, ESearchCase::IgnoreCase, ESearchDir::FromStart);
 		ModifiablePath.Split("/", &ModifiablePath, nullptr, ESearchCase::IgnoreCase, ESearchDir::FromEnd);
@@ -50,7 +54,20 @@ UPackage* FAssetUtilities::CreateAssetPackage(const FString& Name, const FString
 		bool bIsPlugin = ModifiablePath.StartsWith("Plugins");
 
 		// Plugins/ContentLibraries/EpicBaseTextures -> ContentLibraries/EpicBaseTextures
-		if (bIsPlugin) ModifiablePath = ModifiablePath.Replace(TEXT("Plugins/"), TEXT("")).Replace(TEXT("GameFeatures/"), TEXT("")).Replace(TEXT("Content/"), TEXT(""));
+		if (bIsPlugin)
+		{
+			FString PluginName = ModifiablePath;
+			FString RemaningPath;
+			// Plugins/GameFeatures/Creative/CRP/CRP_Sunburst/Content/SetupAssets/Materials
+			// Plugins/GameFeatures/Creative/CRP/CRP_Sunburst
+			// PluginName = CRP_Sunburst
+			// RemaningPath = SetupAssets/Materials
+			PluginName.Split("/Content/", &PluginName, &RemaningPath, ESearchCase::IgnoreCase, ESearchDir::FromStart);
+			PluginName.Split("/", nullptr, &PluginName, ESearchCase::IgnoreCase, ESearchDir::FromEnd);
+
+			// /CRP_Sunburst/SetupAssets/Materials
+			ModifiablePath = PluginName + "/" + RemaningPath;
+		}
 		// Content/Athena -> Game/Athena
 		else ModifiablePath = ModifiablePath.Replace(TEXT("Content"), TEXT("Game"));
 
@@ -58,7 +75,8 @@ UPackage* FAssetUtilities::CreateAssetPackage(const FString& Name, const FString
 		ModifiablePath = "/" + ModifiablePath + "/";
 
 		// Check if plugin exists
-		if (bIsPlugin) {
+		if (bIsPlugin)
+		{
 			FString PluginName;
 			ModifiablePath.Split("/", nullptr, &PluginName, ESearchCase::IgnoreCase, ESearchDir::FromStart);
 			PluginName.Split("/", &PluginName, nullptr, ESearchCase::IgnoreCase, ESearchDir::FromStart);
@@ -66,13 +84,15 @@ UPackage* FAssetUtilities::CreateAssetPackage(const FString& Name, const FString
 			if (IPluginManager::Get().FindPlugin(PluginName) == nullptr)
 				CreatePlugin(PluginName);
 		}
-	} else {
-		FString RootName; {
+	}
+	else
+	{
+		FString RootName;
+		{
 			OutputPath.Split("/", nullptr, &RootName, ESearchCase::IgnoreCase, ESearchDir::FromStart);
 			RootName.Split("/", &RootName, nullptr, ESearchCase::IgnoreCase, ESearchDir::FromStart);
 		}
 
-		// Missing Plugin: Create it
 		if (RootName != "Game" && RootName != "Engine" && IPluginManager::Get().FindPlugin(RootName) == nullptr)
 			CreatePlugin(RootName);
 
@@ -90,12 +110,14 @@ UPackage* FAssetUtilities::CreateAssetPackage(const FString& Name, const FString
 	return Package;
 }
 
-UObject* FAssetUtilities::GetSelectedAsset() {
+UObject* FAssetUtilities::GetSelectedAsset()
+{
 	const FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
 	TArray<FAssetData> SelectedAssets;
 	ContentBrowserModule.Get().GetSelectedAssets(SelectedAssets);
 
-	if (SelectedAssets.Num() == 0) {
+	if (SelectedAssets.Num() == 0)
+	{
 		GLog->Log("JsonAsAsset: [GetSelectedAsset] None selected, returning nullptr.");
 
 		const FText DialogText = FText::FromString(TEXT("A function to find a selected asset failed, please select a asset to go further."));
@@ -109,10 +131,12 @@ UObject* FAssetUtilities::GetSelectedAsset() {
 
 // Constructing assets ect..
 template <typename T>
-bool FAssetUtilities::ConstructAsset(const FString& Path, const FString& Type, TObjectPtr<T>& OutObject, bool& bSuccess) {
+bool FAssetUtilities::ConstructAsset(const FString& Path, const FString& Type, TObjectPtr<T>& OutObject, bool& bSuccess)
+{
 	// Supported Assets
 	if (Type == "Texture2D" ||
-		Type == "TextureCube" ||
+		// Type == "TextureCube" ||
+		// Type == "VolumeTexture" ||
 		Type == "TextureRenderTarget2D" ||
 		Type == "MaterialParameterCollection" ||
 		Type == "CurveFloat" ||
@@ -129,19 +153,25 @@ bool FAssetUtilities::ConstructAsset(const FString& Path, const FString& Type, T
 		Type == "SoundConcurrency" ||
 		Type == "DataTable" ||
 		Type == "SubsurfaceProfile" ||
-		Type == "MaterialFunction"
-	) {
+		Type == "MaterialFunction" ||
+		Type == "Material" // might cause issues
+	)
+	{
 		//		Manually supported asset types
 		// (ex: textures have to be handled separately)
 		if (Type ==
 			"Texture2D" ||
 			Type == "TextureRenderTarget2D" ||
-			Type == "TextureCube"
-			) {
+			Type == "TextureCube" ||
+			Type == "VolumeTexture"
+		)
+		{
 			UTexture* Texture;
+			FString NewPath = Path;
 
-			FString RootName; {
-				Path.Split("/", nullptr, &RootName, ESearchCase::IgnoreCase, ESearchDir::FromStart);
+			FString RootName;
+			{
+				NewPath.Split("/", nullptr, &RootName, ESearchCase::IgnoreCase, ESearchDir::FromStart);
 				RootName.Split("/", &RootName, nullptr, ESearchCase::IgnoreCase, ESearchDir::FromStart);
 			}
 
@@ -149,11 +179,13 @@ bool FAssetUtilities::ConstructAsset(const FString& Path, const FString& Type, T
 			if (RootName != "Game" && RootName != "Engine" && IPluginManager::Get().FindPlugin(RootName) == nullptr)
 				CreatePlugin(RootName);
 
-			bSuccess = Construct_TypeTexture(Path, Texture);
+			bSuccess = Construct_TypeTexture(NewPath, Path, Texture);
 			if (bSuccess) OutObject = Cast<T>(Texture);
 
 			return true;
-		} else {
+		}
+		else
+		{
 			const TSharedPtr<FJsonObject> Response = API_RequestExports(Path);
 			if (Response == nullptr || Path.IsEmpty()) return true;
 
@@ -162,9 +194,21 @@ bool FAssetUtilities::ConstructAsset(const FString& Path, const FString& Type, T
 			FString AssetName;
 			Path.Split(".", &PackagePath, &AssetName);
 
-			if (JsonObject) {
+			if (JsonObject)
+			{
+				FString NewPath = PackagePath;
+
+				FString RootName;
+				{
+					NewPath.Split("/", nullptr, &RootName, ESearchCase::IgnoreCase, ESearchDir::FromStart);
+					RootName.Split("/", &RootName, nullptr, ESearchCase::IgnoreCase, ESearchDir::FromStart);
+				}
+
+				if (RootName != "Game" && RootName != "Engine" && IPluginManager::Get().FindPlugin(RootName) == nullptr)
+					CreatePlugin(RootName);
+
 				UPackage* OutermostPkg;
-				UPackage* Package = CreatePackage(*PackagePath);
+				UPackage* Package = CreatePackage(*NewPath);
 				OutermostPkg = Package->GetOutermost();
 				Package->FullyLoad();
 
@@ -183,11 +227,12 @@ bool FAssetUtilities::ConstructAsset(const FString& Path, const FString& Type, T
 	return false;
 }
 
-bool FAssetUtilities::Construct_TypeTexture(const FString& Path, UTexture*& OutTexture) {
-	if (Path.IsEmpty()) 
+bool FAssetUtilities::Construct_TypeTexture(const FString& Path, const FString& RealPath, UTexture*& OutTexture)
+{
+	if (Path.IsEmpty())
 		return false;
 
-	TSharedPtr<FJsonObject> JsonObject = API_RequestExports(Path);
+	TSharedPtr<FJsonObject> JsonObject = API_RequestExports(RealPath);
 	if (JsonObject == nullptr)
 		return false;
 
@@ -199,25 +244,35 @@ bool FAssetUtilities::Construct_TypeTexture(const FString& Path, UTexture*& OutT
 	TSharedPtr<FJsonObject> JsonExport = Response[0]->AsObject();
 	FString Type = JsonExport->GetStringField("Type");
 	UTexture* Texture = nullptr;
+	TArray<uint8> Data = TArray<uint8>();
 
 	// --------------- Download Texture Data ------------
-	FHttpModule* HttpModule = &FHttpModule::Get();
-	const TSharedRef<IHttpRequest> HttpRequest = HttpModule->CreateRequest();
+	if (Type != "TextureRenderTarget2D")
+	{
+		FHttpModule* HttpModule = &FHttpModule::Get();
+		const TSharedRef<IHttpRequest> HttpRequest = HttpModule->CreateRequest();
 
-	HttpRequest->SetURL(Settings->Url + "/api/v1/export?path=" + Path);
-	HttpRequest->SetHeader("content-type", "application/octet-stream");
-	HttpRequest->SetVerb(TEXT("GET"));
+		HttpRequest->SetURL(Settings->Url + "/api/v1/export?path=" + RealPath);
+		HttpRequest->SetHeader("content-type", "application/octet-stream");
+		HttpRequest->SetVerb(TEXT("GET"));
 
-	const TSharedPtr<IHttpResponse> HttpResponse = FRemoteUtilities::ExecuteRequestSync(HttpRequest);
-	if (!HttpResponse.IsValid() || HttpResponse->GetResponseCode() != 200)
-		return false;
+		const TSharedPtr<IHttpResponse> HttpResponse = FRemoteUtilities::ExecuteRequestSync(HttpRequest);
+		if (!HttpResponse.IsValid() || HttpResponse->GetResponseCode() != 200)
+			return false;
 
-	TArray<uint8> Data = HttpResponse->GetContent();
-	if (Data.Num() == 0)
-		return false;
-	// --------------- Download Texture Data ------------
+		if (HttpResponse->GetContentType().StartsWith("application/json; charset=utf-8"))
+		{
+			return false;
+		}
 
-	FString PackagePath; FString AssetName; {
+		Data = HttpResponse->GetContent();
+		if (Data.Num() == 0)
+			return false;
+	}
+
+	FString PackagePath;
+	FString AssetName;
+	{
 		Path.Split(".", &PackagePath, &AssetName);
 	}
 
@@ -232,6 +287,8 @@ bool FAssetUtilities::Construct_TypeTexture(const FString& Path, UTexture*& OutT
 		Importer->ImportTexture2D(Texture, Data, JsonExport);
 	if (Type == "TextureCube")
 		Importer->ImportTextureCube(Texture, Data, JsonExport);
+	if (Type == "VolumeTexture")
+		Importer->ImportVolumeTexture(Texture, Data, JsonExport);
 	if (Type == "TextureRenderTarget2D")
 		Importer->ImportRenderTarget2D(Texture, JsonExport->GetObjectField("Properties"));
 
@@ -248,8 +305,10 @@ bool FAssetUtilities::Construct_TypeTexture(const FString& Path, UTexture*& OutT
 	Package->FullyLoad();
 
 	// Save texture
-	if (Settings->bAllowPackageSaving) {
-		FSavePackageArgs SaveArgs; {
+	if (Settings->bAllowPackageSaving)
+	{
+		FSavePackageArgs SaveArgs;
+		{
 			SaveArgs.TopLevelFlags = RF_Public | RF_Standalone;
 			SaveArgs.SaveFlags = SAVE_NoError;
 		}
@@ -264,7 +323,8 @@ bool FAssetUtilities::Construct_TypeTexture(const FString& Path, UTexture*& OutT
 	return true;
 }
 
-void FAssetUtilities::CreatePlugin(FString PluginName) {
+void FAssetUtilities::CreatePlugin(FString PluginName)
+{
 	FPluginUtils::FNewPluginParamsWithDescriptor CreationParams;
 	CreationParams.Descriptor.bCanContainContent = true;
 
@@ -301,7 +361,8 @@ void FAssetUtilities::CreatePlugin(FString PluginName) {
 #undef LOCTEXT_NAMESPACE
 }
 
-const TSharedPtr<FJsonObject> FAssetUtilities::API_RequestExports(const FString& Path) {
+const TSharedPtr<FJsonObject> FAssetUtilities::API_RequestExports(const FString& Path)
+{
 	FHttpModule* HttpModule = &FHttpModule::Get();
 	const TSharedRef<IHttpRequest> HttpRequest = HttpModule->CreateRequest();
 

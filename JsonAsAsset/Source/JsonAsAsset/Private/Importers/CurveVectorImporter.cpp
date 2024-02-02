@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright JAA Contributors 2023-2024
 
 #include "Importers/CurveVectorImporter.h"
 
@@ -28,6 +28,7 @@ bool UCurveVectorImporter::ImportData() {
 		}
 
 		// Handle edit changes, and add it to the content browser
+		SavePackage();
 		if (!HandleAssetCreation(CurveVectorAsset)) return false;
 	} catch (const char* Exception) {
 		UE_LOG(LogJson, Error, TEXT("%s"), *FString(Exception));

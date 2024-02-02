@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright JAA Contributors 2023-2024
 
 #include "Importers/CurveLinearColorAtlasImporter.h"
 #include "Importers/TextureImporter.h"
@@ -66,6 +66,7 @@ bool UCurveLinearColorAtlasImporter::ImportData() {
 		Object->PostEditChangeProperty(PropertyChangedEvent);
 
 		// Handle edit changes, and add it to the content browser
+		SavePackage();
 		if (!HandleAssetCreation(Object)) return false;
 	} catch (const char* Exception) {
 		UE_LOG(LogJson, Error, TEXT("%s"), *FString(Exception));

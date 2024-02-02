@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 #include "Importers/SubsurfaceProfileImporter.h"
 
@@ -13,6 +13,7 @@ bool USubsurfaceProfileImporter::ImportData() {
 		GetObjectSerializer()->DeserializeObjectProperties(Properties, SubsurfaceProfile);
 
 		// Handle edit changes, and add it to the content browser
+		SavePackage();
 		HandleAssetCreation(SubsurfaceProfile);
 	} catch (const char* Exception) {
 		UE_LOG(LogJson, Error, TEXT("%s"), *FString(Exception));

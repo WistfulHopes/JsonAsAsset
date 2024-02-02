@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 #include "Importers/Importer.h"
 #include "CoreMinimal.h"
@@ -18,6 +18,7 @@
 #include "Importers/SkeletalMeshLODSettingsImporter.h"
 #include "Importers/SkeletonImporter.h"
 #include "Importers/SoundAttenuationImporter.h"
+#include "Importers/PhysicsImporter.h"
 #include "Importers/SoundConcurrencyImporter.h"
 #include "Importers/ReverbEffectImporter.h"
 #include "Importers/SubsurfaceProfileImporter.h"
@@ -127,7 +128,7 @@ void IImporter::LoadObject(const TSharedPtr<FJsonObject>* PackageIndex, TObjectP
 	TObjectPtr<T> Obj = Cast<T>(StaticLoadObject(T::StaticClass(), nullptr, *(Path + "." + Name)));
 
 	// Material Expressions may be formatted differently
-	if (!Obj && Name.StartsWith("MaterialExpression")) {
+	if (Obj == nullptr && Name.Contains("MaterialExpression")) {
 		FString AssetName; 
 			Path.Split("/", nullptr, &AssetName, ESearchCase::Type::IgnoreCase, ESearchDir::FromEnd);
 
@@ -135,7 +136,7 @@ void IImporter::LoadObject(const TSharedPtr<FJsonObject>* PackageIndex, TObjectP
 		Obj = Cast<T>(StaticLoadObject(T::StaticClass(), nullptr, *(Path + "." + AssetName + ":" + Name)));
 	}
 #pragma warning( pop )
-
+	
 	Object = DownloadWrapper(Obj, Type, Name, Path);
 }
 
@@ -165,7 +166,6 @@ bool IImporter::HandleReference(const FString& GamePath) {
 	FilePath.Split(Settings->ExportDirectory.Path + "/", nullptr, &UnSanitizedCodeName);
 	UnSanitizedCodeName.Split("/", &UnSanitizedCodeName, nullptr, ESearchCase::IgnoreCase, ESearchDir::FromStart);
 
-	// TODO: As of writing this, I don't know how to add Plugin support
 	FString UnSanitizedPath = GamePath.Replace(TEXT("/Game/"), *(UnSanitizedCodeName + "/Content/"));
 	UnSanitizedPath = Settings->ExportDirectory.Path + "/" + UnSanitizedPath + ".json";
 
@@ -242,6 +242,8 @@ bool IImporter::HandleExports(TArray<TSharedPtr<FJsonValue>> Exports, FString Fi
 		FString Name = DataObject->GetStringField("Name");
 
 		UClass* Class = FindObject<UClass>(ANY_PACKAGE, *Type);
+
+		if (Class == nullptr) continue;
 		bool bDataAsset = Class->IsChildOf(UDataAsset::StaticClass());
 
 		if (CanImport(Type) || bDataAsset) {
@@ -278,7 +280,7 @@ bool IImporter::HandleExports(TArray<TSharedPtr<FJsonValue>> Exports, FString Fi
 
 				else if (Type == "LandscapeGrassType") Importer = new ULandscapeGrassTypeImporter(Name, File, DataObject, LocalPackage, LocalOutermostPkg);
 				else if (Type == "NiagaraParameterCollection") Importer = new UNiagaraParameterCollectionImporter(Name, File, DataObject, LocalPackage, LocalOutermostPkg);
-
+				else if (Type == "PhysicsAsset") Importer = new UPhysicsImporter(Name, File, DataObject, LocalPackage, LocalOutermostPkg, Exports);
 				else if (Type == "DataTable") Importer = new UDataTableImporter(Name, File, DataObject, LocalPackage, LocalOutermostPkg);
 				else if (Type == "SubsurfaceProfile") Importer = new USubsurfaceProfileImporter(Name, File, DataObject, LocalPackage, LocalOutermostPkg);
 				else if (bDataAsset) Importer = new UDataAssetImporter(Class, Name, File, DataObject, LocalPackage, LocalOutermostPkg, Exports);

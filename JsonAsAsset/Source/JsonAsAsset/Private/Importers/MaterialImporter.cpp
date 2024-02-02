@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 #include "Importers/MaterialImporter.h"
 
@@ -12,11 +12,11 @@
 #include "Dom/JsonObject.h"
 #include "Factories/MaterialFactoryNew.h"
 #include "Utilities/MathUtilities.h"
-#include "MaterialEditor/Private/MaterialEditor.h"
 #include "MaterialGraph/MaterialGraph.h"
 #include <Editor/UnrealEd/Classes/MaterialGraph/MaterialGraphNode_Composite.h>
 #include <Editor/UnrealEd/Classes/MaterialGraph/MaterialGraphSchema.h>
 
+#include "Editor/MaterialEditor/Private/MaterialEditor.h"
 #include "Settings/JsonAsAssetSettings.h"
 
 void UMaterialImporter::ComposeExpressionPinBase(UMaterialExpressionPinBase* Pin, TMap<FName, UMaterialExpression*>& CreatedExpressionMap, const TSharedPtr<FJsonObject>& _JsonObject, TMap<FName, FImportData>& Exports) {
@@ -76,18 +76,6 @@ bool UMaterialImporter::ImportData() {
 
 		TSharedPtr<FJsonObject> Properties = JsonObject->GetObjectField("Properties");
 
-		TSharedPtr<FJsonObject> SerializerProperties = TSharedPtr(Properties);
-		if (SerializerProperties->HasField("ShadingModel")) // ShadingModel set manually
-			SerializerProperties->RemoveField("ShadingModel");
-
-		GetObjectSerializer()->DeserializeObjectProperties(SerializerProperties, Material);
-		
-		if (FString ShadingModel; Properties->TryGetStringField("ShadingModel", ShadingModel) && ShadingModel != "EMaterialShadingModel::MSM_FromMaterialExpression")
-			Material->SetShadingModel(static_cast<EMaterialShadingModel>(StaticEnum<EMaterialShadingModel>()->GetValueByNameString(ShadingModel)));
-		if (const TSharedPtr<FJsonObject>* ShadingModelsPtr; Properties->TryGetObjectField("ShadingModels", ShadingModelsPtr))
-			if (int ShadingModelField; ShadingModelsPtr->Get()->TryGetNumberField("ShadingModelField", ShadingModelField))
-				Material->GetShadingModels().SetShadingModelField(ShadingModelField);
-
 		// Clear any default expressions the engine adds (ex: Result)
 		Material->GetExpressionCollection().Empty();
 
@@ -100,6 +88,21 @@ bool UMaterialImporter::ImportData() {
 		// Map out each expression for easier access
 		TMap<FName, UMaterialExpression*> CreatedExpressionMap = ConstructExpressions(Material, Material->GetName(), ExpressionNames, Exports);
 		const UJsonAsAssetSettings* Settings = GetDefault<UJsonAsAssetSettings>();
+
+		// Missing Material Data
+		if (Exports.IsEmpty()) {
+			FNotificationInfo Info = FNotificationInfo(FText::FromString("Material Data Missing (" + FileName + ")"));
+			Info.ExpireDuration = 7.0f;
+			Info.bUseLargeFont = true;
+			Info.bUseSuccessFailIcons = true;
+			Info.WidthOverride = FOptionalSize(350);
+			Info.SubText = FText::FromString(FString("Please use the correct FModel provided in the JsonAsAsset server."));
+
+			TSharedPtr<SNotificationItem> NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+			NotificationPtr->SetCompletionState(SNotificationItem::CS_Fail);
+
+			return false;
+		}
 
 		// Iterate through all the expression names
 		PropagateExpressions(Material, ExpressionNames, Exports, CreatedExpressionMap, true);
@@ -250,7 +253,9 @@ bool UMaterialImporter::ImportData() {
 
 						FName GraphNodeNameName = FName(GraphNode_Name);
 
-						UMaterialExpression* Ex = CreateEmptyExpression(MaterialGraph->Material, GraphNodeNameName, FName(GraphNode_Type));
+						TSharedPtr<FJsonObject>* SharedGraphObject = new TSharedPtr<FJsonObject>(MaterialGraphObject);
+
+						UMaterialExpression* Ex = CreateEmptyExpression(MaterialGraph->Material, GraphNodeNameName, FName(GraphNode_Type), SharedGraphObject->Get());
 						if (Ex == nullptr)
 							continue;
 
@@ -314,6 +319,19 @@ bool UMaterialImporter::ImportData() {
 				AssetEditorInstance->UpdateMaterialAfterGraphChange();
 			}
 		}
+
+		if (FString ShadingModel; Properties->TryGetStringField("ShadingModel", ShadingModel) && ShadingModel != "EMaterialShadingModel::MSM_FromMaterialExpression")
+			Material->SetShadingModel(static_cast<EMaterialShadingModel>(StaticEnum<EMaterialShadingModel>()->GetValueByNameString(ShadingModel)));
+
+		if (const TSharedPtr<FJsonObject>* ShadingModelsPtr; Properties->TryGetObjectField("ShadingModels", ShadingModelsPtr))
+			if (int ShadingModelField; ShadingModelsPtr->Get()->TryGetNumberField("ShadingModelField", ShadingModelField))
+				Material->GetShadingModels().SetShadingModelField(ShadingModelField);
+
+		TSharedPtr<FJsonObject> SerializerProperties = TSharedPtr(Properties);
+		if (SerializerProperties->HasField("ShadingModel")) // ShadingModel set manually
+			SerializerProperties->RemoveField("ShadingModel");
+
+		GetObjectSerializer()->DeserializeObjectProperties(SerializerProperties, Material);
 
 		SavePackage();
 		Material->PostEditChange();

@@ -8,7 +8,8 @@
 
 // Grabbed from (https://github.com/FabianFG/CUE4Parse/blob/master/CUE4Parse/UE4/Versions/EGame.cs)
 UENUM()
-enum EParseVersion {
+enum EParseVersion
+{
 	GAME_UE4_0,
 	GAME_UE4_1,
 	GAME_UE4_2,
@@ -34,7 +35,6 @@ enum EParseVersion {
 	GAME_PlayerUnknownsBattlegrounds,
 	GAME_TrainSimWorld2020,
 	GAME_UE4_17,
-	GAME_LifeIsStrange2,
 	GAME_AWayOut,
 	GAME_UE4_18,
 	GAME_KingdomHearts3,
@@ -51,42 +51,49 @@ enum EParseVersion {
 	GAME_ApexLegendsMobile,
 	GAME_UE4_24,
 	GAME_UE4_25,
+	GAME_UE4_25_Plus,
 	GAME_RogueCompany,
 	GAME_DeadIsland2,
 	GAME_KenaBridgeofSpirits,
-	GAME_UE4_25_Plus,
+	GAME_CalabiYau,
 	GAME_UE4_26,
 	GAME_GTATheTrilogyDefinitiveEdition,
 	GAME_ReadyOrNot,
-	GAME_Valorant,
+	GAME_BladeAndSoul,
 	GAME_TowerOfFantasy,
 	GAME_Dauntless,
 	GAME_TheDivisionResurgence,
+	GAME_StarWarsJediSurvivor,
+	GAME_Snowbreak,
 	GAME_UE4_27,
 	GAME_Splitgate,
 	GAME_HYENAS,
 	GAME_HogwartsLegacy,
+	GAME_OutlastTrials,
+	GAME_Valorant,
+	GAME_Gollum,
+	GAME_Grounded,
 	GAME_UE4_28,
-
-	GAME_UE4_LATEST,
 
 	GAME_UE5_0,
 	GAME_MeetYourMaker,
 	GAME_UE5_1,
 	GAME_UE5_2,
 	GAME_UE5_3,
-
-	GAME_UE5_LATEST
+	GAME_UE5_4,
 };
 
 USTRUCT()
-struct FParseKey {
+struct FParseKey
+{
 	GENERATED_BODY()
 
-	FParseKey() {
+	FParseKey()
+	{
 	}
 
-	FParseKey(FString NewGUID, FString NewKey) {
+	FParseKey(FString NewGUID, FString NewKey)
+	{
 		Value = NewKey;
 		Guid = NewGUID;
 	}
@@ -102,7 +109,8 @@ struct FParseKey {
 };
 
 // Buttons in plugin settings
-class FJsonAsAssetSettingsDetails : public IDetailCustomization {
+class FJsonAsAssetSettingsDetails : public IDetailCustomization
+{
 public:
 	static TSharedRef<IDetailCustomization> MakeInstance();
 	virtual void CustomizeDetails(IDetailLayoutBuilder& DetailBuilder) override;
@@ -110,7 +118,8 @@ public:
 
 // A editor plugin to allow JSON files from FModel to a asset in the Content Browser
 UCLASS(Config=EditorPerProjectUserSettings, DefaultConfig)
-class UJsonAsAssetSettings : public UDeveloperSettings {
+class UJsonAsAssetSettings : public UDeveloperSettings
+{
 	GENERATED_BODY()
 
 public:
@@ -127,8 +136,8 @@ public:
 	* NOTE: Please use the file selector, do not manually paste it
 	*		or replace "\" with "/"
 	*/
-	UPROPERTY(EditAnywhere, Config, Category="Behavior")
-		FDirectoryPath ExportDirectory;
+	UPROPERTY(EditAnywhere, Config, Category="Configuration")
+	FDirectoryPath ExportDirectory;
 
 	/**
 	* When importing/downloading any asset type using JsonAsAsset,
@@ -137,8 +146,8 @@ public:
 	* NOTE: This is recommended to be turned off, as this may override
 	*		your own assets, causing irreversible changes. 
 	*/
-	UPROPERTY(EditAnywhere, Config, Category = "Behavior")
-		bool bAllowPackageSaving;
+	UPROPERTY(EditAnywhere, Config, Category = "Configuration", AdvancedDisplay)
+	bool bAllowPackageSaving;
 
 	/**
 	* When importing/downloading the asset type Material, a error may occur
@@ -149,8 +158,8 @@ public:
 	* restart, and re-import the material without any problems with this turned off/on.
 	*			  (or you could just connect them yourself)
 	*/
-	UPROPERTY(EditAnywhere, Config, Category = "Behavior|Material")
-		bool bSkipResultNodeConnection;
+	UPROPERTY(EditAnywhere, Config, Category = "Configuration", AdvancedDisplay)
+	bool bSkipResultNodeConnection;
 
 	/**
 	* Fetches assets from a local service and automatically imports
@@ -160,7 +169,7 @@ public:
 	*		Local Fetch, read more at the README.md file.
 	*/
 	UPROPERTY(EditAnywhere, Config, Category="Local Fetch")
-		bool bEnableLocalFetch;
+	bool bEnableLocalFetch;
 
 	/**
 	* Paks folder location where all the assets are
@@ -169,44 +178,38 @@ public:
 	* NOTE: Please use the file selector, do not manually paste it
 	*		or replace "\" with "/"
 	*/
-	UPROPERTY(EditAnywhere, Config, Category="Local Fetch|Configuration", meta=(EditCondition="bEnableLocalFetch"))
-		FDirectoryPath ArchiveDirectory;
+	UPROPERTY(EditAnywhere, Config, Category="Local Fetch - Configuration", meta=(EditCondition="bEnableLocalFetch"))
+	FDirectoryPath ArchiveDirectory;
 
 	// UE Version for the Unreal Engine Game (same as FModel's UE Verisons property)
-	UPROPERTY(EditAnywhere, Config, Category="Local Fetch|Configuration", meta=(EditCondition="bEnableLocalFetch", GetOptions="GetParseVersions"))
-		FString UnrealVersion;
+	UPROPERTY(EditAnywhere, Config, Category="Local Fetch - Configuration", meta=(EditCondition="bEnableLocalFetch"))
+	TEnumAsByte<EParseVersion> UnrealVersion;
 
 	UFUNCTION(CallInEditor)
-		TArray<FString> GetParseVersions();
+	static TArray<FString> GetParseVersions();
 
 	// Mappings file
 	// NOTE: Please use the file selector, do not manually paste it 
-	UPROPERTY(EditAnywhere, Config, Category="Local Fetch|Configuration", meta=(EditCondition="bEnableLocalFetch", FilePathFilter="usmap", RelativeToGameDir))
-		FFilePath MappingFilePath;
+	UPROPERTY(EditAnywhere, Config, Category="Local Fetch - Configuration", meta=(EditCondition="bEnableLocalFetch", FilePathFilter="usmap", RelativeToGameDir))
+	FFilePath MappingFilePath;
 
-	// High res textures
-	UPROPERTY(EditAnywhere, Config, Category="Local Fetch Encryption|Behavior", meta=(EditCondition="bEnableLocalFetch"))
-		bool bUseContentBuilds;
-
-	UPROPERTY(EditAnywhere, Config, Category="Local Fetch Encryption|Behavior", meta=(EditCondition="bEnableLocalFetch"))
-		bool bDownloadExistingTextures;
+	UPROPERTY(EditAnywhere, Config, Category="Local Fetch - Encryption", meta=(EditCondition="bEnableLocalFetch"), AdvancedDisplay)
+	bool bDownloadExistingTextures;
 
 	// Main key for archives
-	UPROPERTY(EditAnywhere, Config, Category="Local Fetch Encryption", meta=(EditCondition="bEnableLocalFetch", DisplayName="Archive Key"))
-		FString ArchiveKey;
+	UPROPERTY(EditAnywhere, Config, Category="Local Fetch - Encryption", meta=(EditCondition="bEnableLocalFetch", DisplayName="Archive Key"))
+	FString ArchiveKey;
 
 	// AES Keys
-	UPROPERTY(EditAnywhere, Config, Category="Local Fetch Encryption", meta=(EditCondition="bEnableLocalFetch", DisplayName="Dynamic Keys"))
-		TArray<FParseKey> DynamicKeys;
-
-	UPROPERTY(EditAnywhere, Config, Category = "Local Fetch Director", meta = (EditConditionHides, EditCondition = "bEnableLocalFetch"))
-		bool bHideConsole;
+	UPROPERTY(EditAnywhere, Config, Category="Local Fetch - Encryption", meta=(EditCondition="bEnableLocalFetch", DisplayName="Dynamic Keys"))
+	TArray<FParseKey> DynamicKeys;
 
 	// Enables the option to change the api's URL
-	UPROPERTY(EditAnywhere, Config, Category = "Local Fetch Director", meta = (EditConditionHides, EditCondition = "bEnableLocalFetch"))
-		bool bChangeURL;
+	UPROPERTY(EditAnywhere, Config, Category = "Local Fetch", meta = (EditCondition = "bEnableLocalFetch"),
+		AdvancedDisplay)
+	bool bChangeURL;
 
-	// "localhost" is default
-	UPROPERTY(EditAnywhere, Config, Category="Local Fetch Director|REST API", meta=(EditConditionHides, EditCondition="bChangeURL && bEnableLocalFetch", DisplayName = "Local URL"))
-		FString Url = "http://localhost:1500";
+	// "http://localhost:1500" is default
+	UPROPERTY(EditAnywhere, Config, Category="Local Fetch", meta=(EditCondition="bChangeURL && bEnableLocalFetch", DisplayName = "Local URL"), AdvancedDisplay)
+	FString Url = "http://localhost:1500";
 };

@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright JAA Contributors 2023-2024
 
 #include "Importers/PhysicalMaterialImporter.h"
 
@@ -13,6 +13,7 @@ bool UPhysicalMaterialImporter::ImportData() {
         GetObjectSerializer()->DeserializeObjectProperties(Properties, PhysicalMaterial);
 
         // Handle edit changes, and add it to the content browser
+        SavePackage();
         if (!HandleAssetCreation(PhysicalMaterial)) return false;
     } catch (const char* Exception) {
         UE_LOG(LogJson, Error, TEXT("%s"), *FString(Exception));

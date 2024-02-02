@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 #include "Importers/SoundAttenuationImporter.h"
 #include "Dom/JsonObject.h"
@@ -11,6 +11,7 @@ bool USoundAttenuationImporter::ImportData() {
 		GetObjectSerializer()->DeserializeObjectProperties(Properties, SoundAttenuation);
 
 		// Handle edit changes, and add it to the content browser
+		SavePackage();
 		HandleAssetCreation(SoundAttenuation);
 	} catch (const char* Exception) {
 		UE_LOG(LogJson, Error, TEXT("%s"), *FString(Exception));

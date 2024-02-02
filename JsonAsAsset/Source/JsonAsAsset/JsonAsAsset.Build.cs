@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 using UnrealBuildTool;
 
@@ -18,14 +18,14 @@ public class JsonAsAsset : ModuleRules
 			"RenderCore",
 			"HTTP",
 			"DeveloperSettings",
-			"Niagara"
+			"Niagara",
+			"UnrealEd"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new[]
 		{
 			"Projects",
 			"InputCore",
-			"UnrealEd",
 			"ToolMenus",
 			"CoreUObject",
 			"Engine",
@@ -41,6 +41,7 @@ public class JsonAsAsset : ModuleRules
 			"MessageLog",
 			"ToolWidgets",
 			"PluginUtils",
+			"MessageLog",
 			"RHI",
 			"Detex",
 			"NVTT"

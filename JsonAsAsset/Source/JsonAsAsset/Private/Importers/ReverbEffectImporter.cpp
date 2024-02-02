@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 #include "Importers/ReverbEffectImporter.h"
 #include "Sound/ReverbEffect.h"
@@ -13,6 +13,7 @@ bool UReverbEffectImporter::ImportData() {
 		GetObjectSerializer()->DeserializeObjectProperties(Properties, ReverbEffect);
 
 		// Handle edit changes, and add it to the content browser
+		SavePackage();
 		if (!HandleAssetCreation(ReverbEffect)) return false;
 	} catch (const char* Exception) {
 		UE_LOG(LogJson, Error, TEXT("%s"), *FString(Exception));

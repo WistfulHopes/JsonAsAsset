@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 #include "Utilities/EditorGraph/MaterialGraph_Interface.h"
 
@@ -15,11 +15,15 @@
 #include "Materials/MaterialExpressionGetMaterialAttributes.h"
 #include "Materials/MaterialExpressionSetMaterialAttributes.h"
 #include "Materials/MaterialExpressionCollectionParameter.h"
+#include "Materials/MaterialExpressionReroute.h"
 
 #include <MaterialEditingLibrary.h>
 #include <Editor/UnrealEd/Public/FileHelpers.h>
 
 #include "Materials/MaterialExpressionTextureBase.h"
+#include <Runtime/SlateCore/Public/Styling/SlateIconFinder.h>
+
+static TWeakPtr<SNotificationItem> MaterialGraphNotification;
 
 TSharedPtr<FJsonObject> UMaterialGraph_Interface::FindEditorOnlyData(const FString& Type, const FString& Outer, TMap<FName, FImportData>& OutExports, TArray<FName>& ExpressionNames, bool bFilterByOuter) {
 	TSharedPtr<FJsonObject> EditorOnlyData;
@@ -53,19 +57,25 @@ TMap<FName, UMaterialExpression*> UMaterialGraph_Interface::ConstructExpressions
 
 	for (FName Name : ExpressionNames) {
 		FName Type;
+		FJsonObject* SharedRef = NULL;
 		bool bFound = false;
 
 		for (TTuple<FName, FImportData>& Key : Exports) {
-			if (Key.Key == Name && Key.Value.Outer == FName(Outer)) {
+			TSharedPtr<FJsonObject>* SharedO = new TSharedPtr<FJsonObject>(Key.Value.Json);
+
+			if (Key.Key == Name && Key.Value.Outer == FName(*Outer)) {
 				Type = Key.Value.Type;
+				SharedRef = SharedO->Get();
+
 				bFound = true;
 				break;
 			}
 		}
 
 		if (!bFound) continue;
-		UMaterialExpression* Ex = CreateEmptyExpression(Parent, Name, Type);
-		if (Ex == nullptr) continue;
+		UMaterialExpression* Ex = CreateEmptyExpression(Parent, Name, Type, SharedRef);
+		if (Ex == nullptr)
+			continue;
 
 		CreatedExpressionMap.Add(Name, Ex);
 	}
@@ -127,7 +137,7 @@ void UMaterialGraph_Interface::PropagateExpressions(UObject* Parent, TArray<FNam
 				if (MaterialFunctionCall->MaterialFunction == nullptr) {
 					FString ObjectPath;
 					MaterialFunctionPtr->Get()->GetStringField("ObjectPath").Split(".", &ObjectPath, nullptr);
-					if (!HandleReference(ObjectPath)) AppendNotification(FText::FromString("Material Function Missing: " + ObjectPath), FText::FromString("Material Graph"), 2.0f, SNotificationItem::CS_Fail, true);
+					if (!HandleReference(ObjectPath)) {} // AppendNotification(FText::FromString("Material Function Missing: " + ObjectPath), FText::FromString("Material Graph"), 2.0f, SNotificationItem::CS_Fail, true);
 					else LoadObject(MaterialFunctionPtr, MaterialFunctionCall->MaterialFunction);
 				}
 			}
@@ -218,6 +228,26 @@ void UMaterialGraph_Interface::MaterialGraphNode_ConstructComments(UObject* Pare
 			if (UMaterialFunction* FuncCasted = Cast<UMaterialFunction>(Parent)) FuncCasted->GetExpressionCollection().AddComment(Comment);
 			else if (UMaterial* MatCasted = Cast<UMaterial>(Parent)) MatCasted->GetExpressionCollection().AddComment(Comment);
 		}
+
+	for (TTuple<FString, FJsonObject*>& Key : MissingNodeClasses) {
+		TSharedPtr<FJsonObject>* SharedObject = new TSharedPtr<FJsonObject>(Key.Value);
+
+		const TSharedPtr<FJsonObject> Properties = SharedObject->Get()->GetObjectField("Properties");
+		UMaterialExpressionComment* Comment = NewObject<UMaterialExpressionComment>(Parent, UMaterialExpressionComment::StaticClass(), *("UMaterialExpressionComment_" + Key.Key), RF_Transactional);
+
+		Comment->Text = *("Missing Node Class " + Key.Key);
+		Comment->CommentColor = FLinearColor(1.0, 0.0, 0.0);
+		Comment->bCommentBubbleVisible = true;
+		Comment->SizeX = 415;
+		Comment->SizeY = 40;
+
+		Comment->Desc = "A node is missing in your Unreal Engine build, this may be for many reasons, primarily due to your version of Unreal being younger than the one your porting from.";
+
+		GetObjectSerializer()->DeserializeObjectProperties(Properties, Comment);
+
+		if (UMaterialFunction* FuncCasted = Cast<UMaterialFunction>(Parent)) FuncCasted->GetExpressionCollection().AddComment(Comment);
+		else if (UMaterial* MatCasted = Cast<UMaterial>(Parent)) MatCasted->GetExpressionCollection().AddComment(Comment);
+	}
 }
 
 void UMaterialGraph_Interface::MaterialGraphNode_ExpressionWrapper(UObject* Parent, UMaterialExpression* Expression, const TSharedPtr<FJsonObject>& Json) {
@@ -232,7 +262,7 @@ void UMaterialGraph_Interface::MaterialGraphNode_ExpressionWrapper(UObject* Pare
 		}
 }
 
-UMaterialExpression* UMaterialGraph_Interface::CreateEmptyExpression(UObject* Parent, FName Name, FName Type) const {
+UMaterialExpression* UMaterialGraph_Interface::CreateEmptyExpression(UObject* Parent, FName Name, FName Type, FJsonObject* LocalizedObject) {
 	if (IgnoredExpressions.Contains(Type.ToString())) // Unhandled expressions
 		return nullptr;
 
@@ -251,6 +281,35 @@ UMaterialExpression* UMaterialGraph_Interface::CreateEmptyExpression(UObject* Pa
 
 		if (!Class) 
 			Class = FindObject<UClass>(ANY_PACKAGE, *Type.ToString().Replace(TEXT("MaterialExpressionPhysicalMaterialOutput"), TEXT("MaterialExpressionLandscapePhysicalMaterialOutput")));
+	}
+
+	// Show missing nodes in graph
+	if (!Class) {
+		TSharedPtr<FJsonObject>* ShareObject = new TSharedPtr<FJsonObject>(LocalizedObject);
+		MissingNodeClasses.Add(Type.ToString(), ShareObject->Get());
+
+		GLog->Log(*("JsonAsAsset: Missing Node " + Type.ToString() + " in Parent " + Parent->GetName()));
+		FNotificationInfo Info = FNotificationInfo(FText::FromString("Missing Node (" + Parent->GetName() + ")"));
+
+		Info.bUseLargeFont = false;
+		Info.bFireAndForget = false;
+		Info.FadeOutDuration = .5f;
+		Info.ExpireDuration = 8.0f;
+		Info.WidthOverride = FOptionalSize(456);
+		Info.bUseThrobber = false;
+		Info.SubText = FText::FromString(Type.ToString());
+
+#pragma warning(disable: 4800)
+		Info.Image = FSlateIconFinder::FindCustomIconBrushForClass(FindObject<UClass>(nullptr, "/Script/Engine.Material"), TEXT("ClassThumbnail"));
+
+		MaterialGraphNotification = FSlateNotificationManager::Get().AddNotification(Info);
+		MaterialGraphNotification.Pin()->SetCompletionState(SNotificationItem::CS_Pending);
+
+		return NewObject<UMaterialExpression>(
+			Parent,
+			UMaterialExpressionReroute::StaticClass(),
+			Name
+		);
 	}
 
 	return NewObject<UMaterialExpression>

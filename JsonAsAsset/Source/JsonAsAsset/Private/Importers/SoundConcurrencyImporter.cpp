@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright JAA Contributors 2023-2024
 
 #include "Importers/SoundConcurrencyImporter.h"
 #include "Sound/SoundConcurrency.h"
@@ -10,6 +10,7 @@ bool USoundConcurrencyImporter::ImportData() {
 		GetObjectSerializer()->DeserializeObjectProperties(Properties, SoundConcurrency);
 
 		// Handle edit changes, and add it to the content browser
+		SavePackage();
 		HandleAssetCreation(SoundConcurrency);
 	} catch (const char* Exception) {
 		UE_LOG(LogJson, Error, TEXT("%s"), *FString(Exception));

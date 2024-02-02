@@ -5,7 +5,7 @@
 [![Discord](https://img.shields.io/badge/Join%20Discord-Collector?color=7289DA&label=JsonAsAsset&logo=discord&logoColor=7289DA&style=for-the-badge)](https://discord.gg/h9s6qpBnUT)
 ![GitHub Repo stars](https://img.shields.io/github/stars/Tectors/JsonAsAsset?style=for-the-badge&logo=&color=lightgrey)
 ![Repo size](https://img.shields.io/github/repo-size/Tectors/JsonAsAsset?label=total%20size&style=for-the-badge&logo=&color=lightgrey&logoColor=lightgrey)
-![Maintenance](https://img.shields.io/maintenance/yes/2023?style=for-the-badge&logo=&color=lightgrey)
+![Maintenance](https://img.shields.io/maintenance/yes/2024?style=for-the-badge&logo=&color=lightgrey)
 
 Unreal Engine plugin to allow conversion between [JSON](https://www.json.org/json-en.html) to [Unreal Engine](https://www.unrealengine.com/en-US).
 
@@ -105,7 +105,9 @@ Upon launching your unreal engine project, you should of seen a notification ask
 
 First, open up to the JsonAsAsset plugin settings (basically do what's on the picture on the right) and make sure you are looking at the property "Export Directory".
 
-Now open up FModel, and go to your settings. `(Settings -> General)` There will be a setting called "Output Directory", copy that and go back to Unreal Engine. Now you need to click on the three dots and jump to the folder you copied, then press "Select Folder".
+Now open up FModel, and go to your settings. `(Settings -> General)` There will be a setting called "Output Directory", copy that and go back to Unreal Engine. Now you need to click on the three dots and jump to the folder you copied and go to the folder named "Exports", then press "Select Folder".
+
+> We also recommend you enable *"Allow Package Saving"* for less issues during importing. 
 
 -------------------
 

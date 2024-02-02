@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 #include "JsonAsAsset.h"
 #include "JsonAsAssetStyle.h"
@@ -30,8 +30,6 @@
 #include "Dialogs/Dialogs.h"
 #include "ISettingsModule.h"
 
-#include "MessageLog/Public/MessageLogInitializationOptions.h"
-#include "MessageLog/Public/MessageLogModule.h"
 #include "Utilities/RemoteUtilities.h"
 
 #include "Importers/MaterialFunctionImporter.h"
@@ -56,6 +54,8 @@
 #include "Styling/AppStyle.h"
 #include "SPrimaryButton.h"
 #include <TlHelp32.h>
+
+#include "MessageLogModule.h"
 
 #ifdef _MSC_VER
 #undef GetObject
@@ -158,6 +158,33 @@ void FJsonAsAssetModule::PluginButtonClicked() {
 	const UJsonAsAssetSettings* Settings = GetDefault<UJsonAsAssetSettings>();
 	if (Settings->ExportDirectory.Path.IsEmpty())
 		return;
+
+	// Invalid Export Directory
+	if (Settings->ExportDirectory.Path.Contains("\\")) {
+		FNotificationInfo Info(LOCTEXT("JsonAsAssetNotificationTitle", "Export Directory Invalid"));
+		Info.SubText = LOCTEXT("JsonAsAssetNotificationText",
+			"Please fix your export directory in the plugin settings, as it is invalid and contains the character \"\\\"."
+		);
+
+		Info.HyperlinkText = LOCTEXT("UnrealSoftwareRequirements", "JsonAsAsset Plugin Settings");
+		Info.Hyperlink = FSimpleDelegate::CreateStatic([]() {
+			// Send user to plugin settings
+			FModuleManager::LoadModuleChecked<ISettingsModule>("Settings")
+				.ShowViewer("Editor", "Plugins", "JsonAsAsset");
+		});
+
+		Info.bFireAndForget = true;
+		Info.FadeOutDuration = 2.0f;
+		Info.ExpireDuration = 3.0f;
+		Info.bUseLargeFont = false;
+		Info.bUseThrobber = false;
+		Info.Image = FJsonAsAssetStyle::Get().GetBrush("JsonAsAsset.PluginAction");
+
+		LocalFetchNotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+		LocalFetchNotificationPtr.Pin()->SetCompletionState(SNotificationItem::CS_Fail);
+
+		return;
+	}
 
 	if (Settings->bEnableLocalFetch) {
 		TSharedPtr<SNotificationItem> NotificationItem = LocalFetchNotificationPtr.Pin();
@@ -418,6 +445,7 @@ TSharedRef<SWidget> FJsonAsAssetModule::CreateToolbarDropdown() {
 					if (Settings->bEnableLocalFetch) {
 						AcceptedTypes.Add("Texture2D");
 						AcceptedTypes.Add("TextureCube");
+						AcceptedTypes.Add("VolumeTexture");
 						AcceptedTypes.Add("TextureRenderTarget2D");
 						AcceptedTypes.Add("CurveFloat");
 						AcceptedTypes.Add("CurveLinearColor");
@@ -432,6 +460,7 @@ TSharedRef<SWidget> FJsonAsAssetModule::CreateToolbarDropdown() {
 
 						AcceptedTypes.Add("MaterialParameterCollection");
 						AcceptedTypes.Add("MaterialFunction");
+						AcceptedTypes.Add("Material");
 						AcceptedTypes.Add("PhysicalMaterial");
 					}
 
@@ -550,7 +579,7 @@ TSharedRef<SWidget> FJsonAsAssetModule::CreateToolbarDropdown() {
 		FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Settings"),
 		FUIAction(
 			FExecuteAction::CreateLambda([this]() {
-				// Send user to plugin
+				// Send user to plugin settings
 				FModuleManager::LoadModuleChecked<ISettingsModule>("Settings")
 					.ShowViewer("Editor", "Plugins", "JsonAsAsset");
 			})
@@ -618,7 +647,7 @@ void SAboutJsonAsAsset::Construct(const FArguments& InArgs) {
 	#pragma warning(pop)
 	#endif
 
-	FText Version = FText::FromString("Version: " + Plugin->GetDescriptor().VersionName + " (" + Plugin->GetDescriptor().EngineVersion + ")");
+	FText Version = FText::FromString("Version: " + Plugin->GetDescriptor().VersionName);
 	FText Title = FText::FromString("JsonAsAsset");
 
 	ChildSlot
@@ -750,7 +779,7 @@ FReply SAboutJsonAsAsset::OnFModelButtonClicked() {
 }
 
 FReply SAboutJsonAsAsset::OnGithubButtonClicked() {
-	FString TheURL = "https://github.com/Tectors/JsonAsAsset";
+	FString TheURL = "https://github.com/GMatrixGames/JsonAsAsset";
 	FPlatformProcess::LaunchURL(*TheURL, nullptr, nullptr);
 
 	return FReply::Handled();

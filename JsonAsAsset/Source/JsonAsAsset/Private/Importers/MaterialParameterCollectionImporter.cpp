@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright JAA Contributors 2023-2024
 
 #include "Importers/MaterialParameterCollectionImporter.h"
 
@@ -42,6 +42,7 @@ bool UMaterialParameterCollectionImporter::ImportData() {
 			}
 		}
 
+		SavePackage();
 		if (!HandleAssetCreation(MaterialParameterCollection)) return false;
 	} catch (const char* Exception) {
 		UE_LOG(LogJson, Error, TEXT("%s"), *FString(Exception));
